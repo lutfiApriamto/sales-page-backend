@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: sales-page-backend
+    env: php
+    region: singapore
+    buildCommand: composer install --no-dev --optimize-autoloader
+    startCommand: vendor/bin/heroku-php-apache2 public/
