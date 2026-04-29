@@ -12,24 +12,21 @@ use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
-    // Fitur Register
     public function register(Request $request)
     {
-        // 1. Validasi input dari frontend
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed', // 'confirmed' butuh input 'password_confirmation' dari frontend
+            'password' => 'required|string|min:8|confirmed', 
         ]);
 
-        // 2. Buat user baru ke database
+        
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => Hash::make($request->password), // Password otomatis di-hash
+            'password' => Hash::make($request->password),
         ]);
 
-        // 3. Buat token API untuk sesi login
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -42,7 +39,6 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        // Validasi input
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
@@ -51,20 +47,16 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
-            // Jika gagal, kirim JSON error secara eksplisit
             return response()->json([
                 'status' => 'error',
                 'message' => 'Email atau Password Salah'
             ], 401);
         }
 
-        // Bersihkan token lama
         $user->tokens()->delete();
 
-        // Buat token baru
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        // Response minimalis sesuai kebutuhan lu
         return response()->json([
             'status' => 'success',
             'token'  => $token,
@@ -76,10 +68,16 @@ class AuthController extends Controller
         ]);
     }
 
-    // Fitur Logout
+    public function profile(Request $request)
+    {
+        return response()->json([
+            'status' => 'success',
+            'data' => $request->user()
+        ]);
+    }
+
     public function logout(Request $request)
     {
-        // Menghapus token yang sedang digunakan (Revoke token)
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
@@ -87,13 +85,11 @@ class AuthController extends Controller
         ]);
     }
 
-    // Tambahkan method ini di dalam class AuthController
 
     public function forgotPassword(Request $request)
     {
         $request->validate(['email' => 'required|email']);
 
-        // Laravel akan mengurus pembuatan token reset secara otomatis
         $status = Password::sendResetLink($request->only('email'));
 
         return $status === Password::RESET_LINK_SENT
@@ -133,7 +129,6 @@ class AuthController extends Controller
             return response()->json(['message' => 'Token sudah expired, silakan request ulang.'], 400);
         }
 
-        // Gunakan plain text - cast 'hashed' di User model akan hash otomatis
     $user->password = $request->password;
     $user->remember_token = Str::random(60);
     $user->save();
