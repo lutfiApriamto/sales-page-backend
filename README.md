@@ -13,7 +13,7 @@
 
 SalesGen.ai adalah aplikasi web fullstack yang memungkinkan pengguna untuk menghasilkan **sales page / landing page profesional** secara otomatis menggunakan kecerdasan buatan (Gemini AI). Repository ini merupakan bagian **Backend API** dari aplikasi tersebut.
 
-**Repository Frontend:** [sales-page-frontend](https://github.com/lutfiApriamto/sales-page-frontend)  
+**Repository Frontend:** [sales-page-frontend](https://github.com/lutfiApriamto/sales-page-front-end)  
 **Live API:** `https://sales-page-backend.onrender.com/api`
 
 ---
