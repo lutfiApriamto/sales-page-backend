@@ -1,5 +1,5 @@
 <?php
-
+// salesPagesFactory
 namespace Database\Factories;
 
 use App\Models\SalesPage;
