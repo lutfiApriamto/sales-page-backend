@@ -96,8 +96,10 @@ routes/
 | `POST` | `/api/logout` | Logout & hapus token |
 | `GET` | `/api/sales-pages` | Ambil semua riwayat sales page |
 | `POST` | `/api/sales-pages` | Generate & simpan sales page baru |
+| `POST` | `/api/sales-pages/stream` | Generate sales page secara streaming (SSE) |
 | `GET` | `/api/sales-pages/{id}` | Detail satu sales page |
 | `DELETE` | `/api/sales-pages/{id}` | Hapus sales page |
+| `POST` | `/api/upload` | Upload gambar (produk/logo) ke Supabase Storage |
 
 ---
 

@@ -18,6 +18,10 @@ class SalesPage extends Model
         'target_audience',
         'price',
         'unique_selling_points',
+        'tone',
+        'color_scheme',
+        'image_url',
+        'logo_url',
         'ai_generated_content',
     ];
 
