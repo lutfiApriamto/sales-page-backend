@@ -186,10 +186,10 @@ class SalesPageController extends Controller
             'unique_selling_points' => 'nullable|string',
             'tone' => 'nullable|in:professional,casual,aggressive',
             'color_scheme' => 'nullable|in:blue,dark,green,custom',
-            'custom_color' => 'nullable|string',
+            'custom_color' => 'nullable|string|max:30',
             'sections' => 'nullable|array',
-            'image_url' => 'nullable|string',
-            'logo_url' => 'nullable|string',
+            'image_url' => 'nullable|url',
+            'logo_url' => 'nullable|url',
         ]);
 
         $user = Auth::user();

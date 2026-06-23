@@ -129,4 +129,24 @@ class SalesPageStreamTest extends TestCase
 
         $response->assertStatus(401);
     }
+
+    public function test_stream_rejects_invalid_image_url(): void
+    {
+        $user = User::factory()->create(['credits' => 5]);
+        Sanctum::actingAs($user);
+        Http::fake(); // Gemini must NOT be called
+
+        $response = $this->postJson('/api/sales-pages/stream', [
+            'product_name' => 'Produk A',
+            'description' => 'Deskripsi produk A',
+            'tone' => 'professional',
+            'color_scheme' => 'blue',
+            'image_url' => '"><script>alert(1)</script>',
+        ]);
+
+        $response->assertStatus(422);
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('sales_pages', 0);
+        $this->assertEquals(5, $user->fresh()->credits);
+    }
 }
