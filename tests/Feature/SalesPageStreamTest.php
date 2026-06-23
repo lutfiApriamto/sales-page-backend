@@ -94,6 +94,32 @@ class SalesPageStreamTest extends TestCase
         $this->assertEquals(5, $user->fresh()->credits);
     }
 
+    public function test_stream_refunds_credit_on_empty_content(): void
+    {
+        $user = User::factory()->create(['credits' => 5]);
+        Sanctum::actingAs($user);
+        $body = 'data: ' . json_encode([
+            'candidates' => [['content' => ['parts' => [['text' => '']]]]]
+        ]) . "\n\n";
+        Http::fake([
+            '*generativelanguage.googleapis.com*' => Http::response($body, 200),
+        ]);
+
+        $response = $this->postJson('/api/sales-pages/stream', [
+            'product_name' => 'Produk A',
+            'description' => 'Deskripsi',
+            'tone' => 'professional',
+            'color_scheme' => 'blue',
+        ]);
+
+        $response->assertStatus(200);
+        $content = $response->streamedContent();
+
+        $this->assertStringContainsString('"error"', $content);
+        $this->assertDatabaseCount('sales_pages', 0);
+        $this->assertEquals(5, $user->fresh()->credits);
+    }
+
     public function test_stream_requires_authentication(): void
     {
         $response = $this->postJson('/api/sales-pages/stream', [

@@ -202,6 +202,7 @@ class SalesPageController extends Controller
 
         // Potong 1 credit di awal; akan di-refund jika generate gagal.
         $user->decrement('credits');
+        $user->refresh();
 
         $prompt = $promptBuilder->build($validated);
 
