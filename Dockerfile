@@ -46,4 +46,6 @@ RUN echo '<Directory /var/www/html/public>\n\
 
 EXPOSE 80
 
-CMD ["apache2-foreground"]
+# Jalankan migration database saat startup, lalu start Apache.
+# `migrate --force` aman: hanya menerapkan migration yang belum ada (non-destruktif).
+CMD ["sh", "-c", "php artisan migrate --force && apache2-foreground"]

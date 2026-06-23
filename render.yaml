@@ -4,4 +4,6 @@ services:
     env: php
     region: singapore
     buildCommand: composer install --no-dev --optimize-autoloader
+    # Jalankan migration database sebelum versi baru aktif (aman: hanya menerapkan migration yang belum ada)
+    preDeployCommand: php artisan migrate --force
     startCommand: vendor/bin/heroku-php-apache2 public/
