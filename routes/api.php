@@ -16,8 +16,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [AuthController::class, 'profile']);
     
-    Route::get('/sales-pages', [SalesPageController::class, 'index']);     
+    Route::get('/sales-pages', [SalesPageController::class, 'index']);
     Route::post('/sales-pages', [SalesPageController::class, 'store']);
+    Route::post('/sales-pages/stream', [SalesPageController::class, 'stream']);
     Route::get('/sales-pages/{id}', [SalesPageController::class, 'show']);
     Route::delete('/sales-pages/{id}', [SalesPageController::class, 'destroy']);
 

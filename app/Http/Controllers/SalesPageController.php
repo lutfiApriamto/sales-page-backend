@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\SalesPage;
+use App\Services\PromptBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SalesPageController extends Controller
 {
@@ -168,7 +170,120 @@ class SalesPageController extends Controller
     {
         $salesPage = SalesPage::where('user_id', Auth::id())->findOrFail($id);
         $salesPage->delete();
-        
+
         return response()->json(['status' => 'success', 'message' => 'Riwayat berhasil dihapus']);
+    }
+
+    // Generate sales page secara streaming (Server-Sent Events) via Gemini.
+    public function stream(Request $request, PromptBuilder $promptBuilder)
+    {
+        $validated = $request->validate([
+            'product_name' => 'required|string',
+            'description' => 'required|string',
+            'features' => 'nullable|array',
+            'target_audience' => 'nullable|string',
+            'price' => 'nullable|string',
+            'unique_selling_points' => 'nullable|string',
+            'tone' => 'nullable|in:professional,casual,aggressive',
+            'color_scheme' => 'nullable|in:blue,dark,green,custom',
+            'custom_color' => 'nullable|string',
+            'sections' => 'nullable|array',
+            'image_url' => 'nullable|string',
+            'logo_url' => 'nullable|string',
+        ]);
+
+        $user = Auth::user();
+        if ($user->credits <= 0) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Batas penggunaan API (35/35) telah habis untuk akun demo ini.',
+            ], 403);
+        }
+
+        // Potong 1 credit di awal; akan di-refund jika generate gagal.
+        $user->decrement('credits');
+
+        $prompt = $promptBuilder->build($validated);
+
+        $response = new StreamedResponse(function () use ($prompt, $validated, $user) {
+            $sendEvent = function (array $payload) {
+                echo 'data: ' . json_encode($payload) . "\n\n";
+                if (ob_get_level() > 0) {
+                    @ob_flush();
+                }
+                flush();
+            };
+
+            try {
+                $apiResponse = Http::withoutVerifying()
+                    ->timeout(120)
+                    ->withHeaders(['Content-Type' => 'application/json'])
+                    ->post(
+                        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:streamGenerateContent?alt=sse&key=' . env('GEMINI_API_KEY'),
+                        ['contents' => [['parts' => [['text' => $prompt]]]]]
+                    );
+
+                if (! $apiResponse->successful()) {
+                    $user->increment('credits'); // refund
+                    $sendEvent(['error' => 'Gagal menghubungi AI. Credit Anda dikembalikan.']);
+                    return;
+                }
+
+                // Parse body SSE Gemini ("data: {json}" per baris) dan teruskan teksnya.
+                $full = '';
+                foreach (preg_split('/\r?\n/', $apiResponse->body()) as $line) {
+                    $line = trim($line);
+                    if ($line === '' || ! str_starts_with($line, 'data:')) {
+                        continue;
+                    }
+                    $json = trim(substr($line, 5));
+                    if ($json === '[DONE]') {
+                        continue;
+                    }
+                    $decoded = json_decode($json, true);
+                    $text = $decoded['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                    if ($text !== '') {
+                        $full .= $text;
+                        $sendEvent(['chunk' => $text]);
+                    }
+                }
+
+                if (trim($full) === '') {
+                    $user->increment('credits'); // refund: tidak ada konten
+                    $sendEvent(['error' => 'AI tidak menghasilkan konten. Credit Anda dikembalikan.']);
+                    return;
+                }
+
+                $salesPage = SalesPage::create([
+                    'user_id' => $user->id,
+                    'product_name' => $validated['product_name'],
+                    'description' => $validated['description'],
+                    'features' => $validated['features'] ?? null,
+                    'target_audience' => $validated['target_audience'] ?? null,
+                    'price' => $validated['price'] ?? null,
+                    'unique_selling_points' => $validated['unique_selling_points'] ?? null,
+                    'tone' => $validated['tone'] ?? null,
+                    'color_scheme' => $validated['color_scheme'] ?? null,
+                    'image_url' => $validated['image_url'] ?? null,
+                    'logo_url' => $validated['logo_url'] ?? null,
+                    'ai_generated_content' => trim($full),
+                ]);
+
+                $sendEvent([
+                    'done' => true,
+                    'id' => $salesPage->id,
+                    'sisa_credit' => $user->fresh()->credits,
+                ]);
+            } catch (\Throwable $e) {
+                $user->increment('credits'); // refund saat exception
+                $sendEvent(['error' => 'Terjadi kesalahan saat generate. Credit Anda dikembalikan.']);
+            }
+        });
+
+        $response->headers->set('Content-Type', 'text/event-stream');
+        $response->headers->set('Cache-Control', 'no-cache');
+        $response->headers->set('X-Accel-Buffering', 'no');
+
+        return $response;
     }
 }
